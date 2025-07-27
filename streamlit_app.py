@@ -23,11 +23,11 @@ CONSULTATION_PROMPT_PATH = "../system_prompt.md" # 新しいプロンプトフ�
 
 # --- デザイン設定 ---
 # 画像のURL
-bg_image_url = "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/59c1c5a9-d232-4861-a477-a8726e632759/d15q6x0-438c8235-513c-43f1-9b88-1516e13ca40f.jpg/v1/fill/w_1024,h_1280,q_75,strp/fantasy_sky_bg_02_by_joannastar_stock_d15q6x0-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJI"
+bg_image_url = "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/4d99d253-1524-492c-a86a-72a397a6a759/d8vohc4-c22f183a-23a9-43c2-9092-23b6b66e33a4.png/v1/fill/w_1280,h_4496,q_80,strp/haunted_library_ref_by_gooseworx_d8vohc4-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIZCJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9NDQ5NiIsInBhdGgiOiJcL2ZcLzRkOTlkMjUzLTE1MjQtNDkyYy1hODZhLTcyYTM5N2E2YTc1OVwvZDh2b2hjNC1jMjJmMTgzYS0yM2E5LTQzYzItOTA5Mi0yM2I2YjY2ZTMzYTQucG5nIiwid2lkdGgiOiI8PTEyODAifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6aW1hZ2Uub3BlcmF0aW9ucyJdfQ.YtB2U_z2g5K_Dbk2JpB4c62Q2z2iK285d3I01e_4a_E"
 
 custom_css = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
 
 /* Main app background */
 .stApp {{
@@ -39,64 +39,64 @@ custom_css = f"""
 
 /* App title */
 h1 {{
-    font-family: 'Lora', serif;
-    color: #EAEAEA;
-    text-shadow: 2px 2px 8px #000;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #FFFFFF;
+    text-shadow: 2px 2px 10px #000000, 0 0 5px #000000;
 }}
 
 /* General text & Chat Bubbles */
 body, .st-emotion-cache-10trblm, div[data-testid="stChatMessage"] > div > div > p {{
-    color: #EAEAEA;
-    font-family: 'Lora', serif;
-    text-shadow: 1px 1px 3px #000, -1px -1px 3px #000, 1px -1px 3px #000, -1px 1px 3px #000;
+    color: #F0F0F0; /* Slightly off-white for better readability */
+    font-family: 'Noto Sans JP', sans-serif;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
 }}
 
 /* Chat Bubbles Container */
 div[data-testid="stChatMessage"] {{
-    border-radius: 15px;
-    padding: 1.2em;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background-color: rgba(10, 20, 30, 0.8); /* Darker, less transparent */
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(15, 15, 15, 0.95); /* Very dark, almost opaque */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }}
 
 /* Chat Input Box */
 div[data-testid="stChatInput"] {{
     background-color: transparent;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }}
 
 textarea[data-testid="stChatInputTextArea"] {{
-    background-color: rgba(10, 20, 30, 0.8);
-    color: #EAEAEA;
-    font-family: 'Lora', serif;
-    border-radius: 15px;
-    border: 1px solid rgba(0, 255, 255, 0.4);
+    background-color: rgba(15, 15, 15, 0.95);
+    color: #F0F0F0;
+    font-family: 'Noto Sans JP', sans-serif;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
 }}
 
 textarea[data-testid="stChatInputTextArea"]:focus {{
-    border-color: rgba(0, 255, 255, 0.9);
-    box-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
+    border-color: rgba(0, 255, 255, 0.7);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
 }}
 
 /* Expander for source files */
 div[data-testid="stExpander"] {{
-    border-color: rgba(255, 255, 255, 0.15);
-    background-color: rgba(10, 20, 30, 0.75);
-    border-radius: 15px;
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(15, 15, 15, 0.9);
+    border-radius: 12px;
 }}
 
 summary[data-testid="stExpanderHeader"] {{
-    color: #EAEAEA;
-    font-family: 'Lora', serif;
-    text-shadow: 1px 1px 3px #000;
+    color: #F0F0F0;
+    font-family: 'Noto Sans JP', sans-serif;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
 }}
 
 /* Spinner text color */
 .stSpinner > div > div {{
-    color: #EAEAEA;
-    text-shadow: 1px 1px 3px #000;
+    color: #F0F0F0;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
 }}
 </style>
 """
@@ -293,7 +293,8 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
     with st.chat_message("assistant", avatar=avatar_path_assistant):
         placeholder = st.empty()
         full_response = ""
-        
+        sources = []
+
         try:
             # 1. ユーザーの質問の意図を分類
             intent = classify_prompt(prompt)
@@ -301,30 +302,27 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
 
             # 2. 意図に応じて処理を分岐
             if intent in ["ノウハウ/プログラム", "事務的な質問"]:
-                # --- 従来のナレッジベース検索 ---
+                # --- 従来のナレッジベース検索フロー ---
                 with st.spinner("🛰️ オーダーに最適な情報を探索中…"):
                     search_query = generate_search_query(prompt, st.session_state.messages)
                     docs_with_scores = db.similarity_search_with_score(search_query, k=10)
                     
                     context = ""
-                    source_docs = []
-                    if docs_with_scores:
-                        for doc, score in docs_with_scores:
-                            if score < 0.8:
-                                context += doc.page_content + "\n\n"
-                                source_docs.append({
-                                    "file_path": doc.metadata.get("source", "不明なソース"),
-                                    "content": doc.page_content,
-                                    "score": score,
-                                    "id": str(uuid.uuid4())
-                                })
+                    for doc, score in docs_with_scores:
+                        if score < 0.8:
+                            context += doc.page_content + "\n\n"
+                            sources.append({
+                                "file_path": doc.metadata.get("source", "不明なソース"),
+                                "content": doc.page_content,
+                                "score": score,
+                                "id": str(uuid.uuid4())
+                            })
 
-                if source_docs:
+                if sources:
                     prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n---\n{context}\n---\n\nユーザーからの質問:\n{prompt}"
                 else:
                     prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n(関連情報は見つかりませんでした)\n\nユーザーからの質問:\n{prompt}"
                 
-                # --- 応答生成 ---
                 with st.spinner("🧠 しゅんさんの知識と宇宙意識を同期中…"):
                     response_stream = model.generate_content(prompt_with_context, stream=True)
                     for chunk in response_stream:
@@ -332,43 +330,30 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
                             cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
                             full_response += cleaned_chunk
                             placeholder.markdown(full_response + "▌")
-                
-                # 応答の最後の整形と表示
-                final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
-                placeholder.markdown(final_response)
-                
-                # アシスタントのメッセージを履歴に追加
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": final_response, 
-                    "sources": source_docs, 
-                    "avatar": AVATAR_IMAGE_PATH,
-                    "id": str(uuid.uuid4())
-                })
-
+            
             else: # "人生相談" または "その他"
                 # --- 新しい対話フロー ---
                 with st.spinner("💖 あなたの心の声に耳を澄ましています…"):
                     prompt_for_consultation = f"{consultation_system_prompt}\n\nユーザーからのメッセージ:\n{prompt}"
                     response_stream = model.generate_content(prompt_for_consultation, stream=True)
                     for chunk in response_stream:
-                         if chunk.text:
+                        if chunk.text:
                             cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
                             full_response += cleaned_chunk
                             placeholder.markdown(full_response + "▌")
 
-                    # 応答の最終整形と表示
-                    final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
-                    placeholder.markdown(final_response)
-                    
-                    # アシスタントのメッセージを履歴に追加
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": final_response, 
-                        "sources": [], # 人生相談の場合は関連情報なし
-                        "avatar": AVATAR_IMAGE_PATH,
-                        "id": str(uuid.uuid4())
-                    })
+            # 応答の最後の整形と表示
+            final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
+            placeholder.markdown(final_response)
+            
+            # アシスタントのメッセージを履歴に追加
+            st.session_state.messages.append({
+                "role": "assistant", 
+                "content": final_response, 
+                "sources": sources, # ノウハウ検索の場合はsourcesが入り、それ以外は空のリストが入る
+                "avatar": AVATAR_IMAGE_PATH,
+                "id": str(uuid.uuid4())
+            })
 
         except Exception as e:
             st.error(f"大変申し訳ございません、エラーが発生しました: {e}")
