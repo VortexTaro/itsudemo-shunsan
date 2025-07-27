@@ -132,10 +132,10 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
         full_response = ""
         
         try:
-            with st.spinner("最適な検索方法を考えています..."):
+            with st.spinner("🧠 しゅんさんの知識と宇宙意識を同期中…"):
                 search_query = generate_search_query(prompt, st.session_state.messages)
             
-            with st.spinner(f"「{search_query}」でナレッジベースを検索中..."):
+            with st.spinner(f"🛰️ オーダー「{search_query}」に最適な情報を探索中…"):
                 docs_with_scores = db.similarity_search_with_score(search_query, k=10) # 検索件数を増やす
             
             context = "--- 関連情報 ---\n"
