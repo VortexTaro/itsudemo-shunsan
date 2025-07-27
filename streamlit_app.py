@@ -103,13 +103,14 @@ db = load_faiss_index(FAISS_INDEX_PATH, embeddings, KNOWLEDGE_BASE_DIR)
 if "messages" not in st.session_state:
     st.session_state.messages = [{
         "role": "assistant",
-        "content": "僕はしゅんさんのクローンです。オーダーノートや引き寄せについて、何でも聞いてね！",
+        "content": "僕はしゅんさんのクローンです。しゅんさんが教えてくれた情報を元にあなたの質問に答えちゃうよ！引き寄せの法則・オーダーノートを学ぶ中で疑問や人生相談などあればなんなりチャットから教えてください！\n\n※あなたが質問したことはいかなることであっても、しゅんさんや他の人には見えないから、安心してね！",
         "id": str(uuid.uuid4()),
     }]
 
 # --- チャット履歴の表示 ---
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    avatar_path = "assets/avatar.png" if msg["role"] == "assistant" else None
+    with st.chat_message(msg["role"], avatar=avatar_path):
         st.markdown(msg["content"])
         if msg["role"] == "assistant" and "sources" in msg and msg["sources"]:
             with st.expander("参照元ファイル"):
@@ -121,10 +122,12 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input("質問や相談したいことを入力してね"):
     st.session_state.messages.append({"role": "user", "content": prompt, "id": str(uuid.uuid4())})
     
-    with st.chat_message("user"):
+    avatar_path_user = None # ユーザーアバターはデフォルト
+    with st.chat_message("user", avatar=avatar_path_user):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
+    avatar_path_assistant = "assets/avatar.png"
+    with st.chat_message("assistant", avatar=avatar_path_assistant):
         message_placeholder = st.empty()
         full_response = ""
         
