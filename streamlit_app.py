@@ -80,9 +80,9 @@ def load_faiss_index(path, _embeddings, knowledge_dir):
     return db
 
 # --- ナレッジベースの配置 ---
-st.info("ナレッジベースの準備をしています...")
+# st.info("ナレッジベースの準備をしています...")
 # 古いプロジェクトから新しいプロジェクトへナレッジベースをコピー
-os.system(f"cp -r オーダーノート現実創造プログラム/* hikiyose_app_fresh/knowledge_base/")
+# os.system(f"cp -r オーダーノート現実創造プログラム/* hikiyose_app_fresh/knowledge_base/")
 
 db = load_faiss_index(FAISS_INDEX_PATH, embeddings, KNOWLEDGE_BASE_DIR)
 
