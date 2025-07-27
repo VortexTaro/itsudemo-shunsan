@@ -14,6 +14,80 @@ import traceback
 import json
 from datetime import datetime
 
+# --- デザイン設定 ---
+custom_css = f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+
+/* Main app background */
+.stApp {{
+    background: #0F2027;  /* fallback */
+    background: -webkit-linear-gradient(to right, #2C5364, #203A43, #0F2027);
+    background: linear-gradient(to right, #2C5364, #203A43, #0F2027);
+}}
+
+/* App title */
+h1 {{
+    font-family: 'Lora', serif;
+    color: #EAEAEA;
+    text-shadow: 2px 2px 6px #000;
+}}
+
+/* General text color */
+body, .st-emotion-cache-10trblm {{
+    color: #EAEAEA;
+    font-family: 'Lora', serif;
+}}
+
+/* Chat Bubbles */
+div[data-testid="stChatMessage"] {{
+    border-radius: 10px;
+    padding: 1em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);
+}}
+
+/* Chat Input Box */
+div[data-testid="stChatInput"] {{
+    background-color: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}}
+
+textarea[data-testid="stChatInputTextArea"] {{
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #EAEAEA;
+    font-family: 'Lora', serif;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 255, 255, 0.3); /* Soft cyan border */
+    transition: all 0.3s ease;
+}}
+
+textarea[data-testid="stChatInputTextArea"]:focus {{
+    border-color: rgba(0, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}}
+
+/* Expander for source files */
+div[data-testid="stExpander"] {{
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+}}
+
+summary[data-testid="stExpanderHeader"] {{
+    color: #EAEAEA;
+    font-family: 'Lora', serif;
+}}
+
+/* Spinner text color */
+.stSpinner > div > div {{
+    color: #EAEAEA;
+}}
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
+
+
 # --- 初期設定 ---
 st.title("いつでもしゅんさん")
 
@@ -186,18 +260,24 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
                 for chunk in stream:
                     if chunk.text:
                         full_response += chunk.text
-                        message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
+                        # マークダウン表示崩れを修正しながらストリーミング
+                        display_text = re.sub(r'\\(?=[\*`_])', '', full_response)
+                        message_placeholder.markdown(display_text + "▌")
+
+                # 最終的な応答もクリーンアップ
+                final_clean_response = re.sub(r'\\(?=[\*`_])', '', full_response)
+                message_placeholder.markdown(final_clean_response)
 
 
             except Exception as e:
                 st.error(f"エラーが発生しました: {traceback.format_exc()}")
                 full_response = "申し訳ありません、応答を生成できませんでした。"
                 message_placeholder.markdown(full_response)
+                final_clean_response = full_response # エラー時も変数を定義
 
         assistant_message = {
             "role": "assistant",
-            "content": full_response,
+            "content": final_clean_response, # クリーンな応答を保存
             "sources": source_docs,
             "id": str(uuid.uuid4())
         }
