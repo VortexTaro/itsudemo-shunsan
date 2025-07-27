@@ -29,7 +29,7 @@ try:
         raise KeyError("API key not found")
     genai.configure(api_key=api_key)
     
-    model = genai.GenerativeModel("gemini-1.5-pro-latest") # 安定性を優先してモデルを一旦変更
+    model = genai.GenerativeModel("gemini-2.5-pro") # モデルを2.5-proに戻す
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001",
         google_api_key=api_key
@@ -38,6 +38,24 @@ try:
 except KeyError:
     st.error("Gemini APIキーが設定されていません。")
     st.stop()
+
+def generate_search_query(prompt, conversation_history):
+    """ユーザーのプロンプトと会話履歴から、FAISS検索に最適なクエリを生成する"""
+    history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in conversation_history])
+    prompt_template = f"""
+あなたは優秀な検索アシスタントです。以下の会話履歴と最後のユーザープロンプトを分析し、ベクトルデータベースから最も関連性の高い情報を引き出すための、簡潔かつ効果的な検索クエリを日本語で生成してください。
+【会話履歴】
+{history_str}
+【最後のユーザープロンプト】
+{prompt}
+【生成すべき検索クエリ】
+"""
+    try:
+        response = model.generate_content(prompt_template)
+        search_query = response.text.strip()
+        return search_query
+    except Exception:
+        return prompt # 失敗した場合は元のプロンプトを使用
 
 # --- 知識ベース構築 ---
 KNOWLEDGE_BASE_DIR = "knowledge_base"
@@ -79,11 +97,6 @@ def load_faiss_index(path, _embeddings, knowledge_dir):
     st.success(f"新しい知識ベースを '{path}' に保存しました。")
     return db
 
-# --- ナレッジベースの配置 ---
-# st.info("ナレッジベースの準備をしています...")
-# 古いプロジェクトから新しいプロジェクトへナレッジベースをコピー
-# os.system(f"cp -r オーダーノート現実創造プログラム/* hikiyose_app_fresh/knowledge_base/")
-
 db = load_faiss_index(FAISS_INDEX_PATH, embeddings, KNOWLEDGE_BASE_DIR)
 
 # セッション状態の初期化
@@ -98,10 +111,15 @@ if "messages" not in st.session_state:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+        if msg["role"] == "assistant" and "sources" in msg and msg["sources"]:
+            with st.expander("参照元ファイル"):
+                for source in msg["sources"]:
+                    st.info(f"`{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
+
 
 # --- ユーザーからの入力 ---
 if prompt := st.chat_input("質問や相談したいことを入力してね"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt, "id": str(uuid.uuid4())})
     
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -111,19 +129,24 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
         full_response = ""
         
         try:
-            docs_with_scores = db.similarity_search_with_score(prompt, k=5)
+            with st.spinner("最適な検索方法を考えています..."):
+                search_query = generate_search_query(prompt, st.session_state.messages)
+            
+            with st.spinner(f"「{search_query}」でナレッジベースを検索中..."):
+                docs_with_scores = db.similarity_search_with_score(search_query, k=10) # 検索件数を増やす
             
             context = "--- 関連情報 ---\n"
             source_docs = []
             if docs_with_scores:
                 for doc, score in docs_with_scores:
-                    context += doc.page_content + "\n\n"
-                    source_docs.append({
-                        "file_path": doc.metadata.get('source', 'N/A'),
-                        "score": score
-                    })
+                    # スコアが著しく低いものは除外（調整可能）
+                    if score < 0.8:
+                        context += doc.page_content + "\n\n"
+                        source_docs.append({
+                            "file_path": doc.metadata.get('source', 'N/A'),
+                            "score": score
+                        })
 
-            # プロンプトファイルの作成と読み込み
             system_prompt_content = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
 しゅんさんとして、親しみやすく、分かりやすい言葉で、ユーザーの悩みや質問に答えてください。
 提供された「関連情報」を最優先の知識ベースとし、その情報のみに基づいて回答を生成してください。
@@ -133,23 +156,25 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
             
             final_prompt = f"{system_prompt_content}\n\n{context}\n\nuser: {prompt}\nassistant:"
             
-            response = model.generate_content(final_prompt)
-            full_response = response.text
+            stream = model.generate_content(final_prompt, stream=True)
+            for chunk in stream:
+                if chunk.text:
+                    full_response += chunk.text
+                    message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)
+
 
         except Exception as e:
             st.error(f"エラーが発生しました: {traceback.format_exc()}")
             full_response = "申し訳ありません、応答を生成できませんでした。"
             message_placeholder.markdown(full_response)
 
-        st.session_state.messages.append({
+        assistant_message = {
             "role": "assistant",
-            "content": full_response
-        })
-        
-        if source_docs:
-            with st.expander("参照元ファイル"):
-                for source in source_docs:
-                    st.info(f"`{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
+            "content": full_response,
+            "sources": source_docs,
+            "id": str(uuid.uuid4())
+        }
+        st.session_state.messages.append(assistant_message)
         
         st.rerun() 
