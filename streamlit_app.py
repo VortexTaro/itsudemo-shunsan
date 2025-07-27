@@ -115,7 +115,10 @@ for msg in st.session_state.messages:
         if msg["role"] == "assistant" and "sources" in msg and msg["sources"]:
             with st.expander("参照元ファイル"):
                 for source in msg["sources"]:
-                    st.info(f"`{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
+                    # st.info(f"`{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
+                    st.markdown(f"**ファイル名:** `{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
+                    st.text_area("参照箇所", value=source['content'], height=150, disabled=True, key=f"source_{msg['id']}_{source['file_path']}")
+                    st.divider()
 
 
 # --- ユーザーからの入力 ---
@@ -131,26 +134,26 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
         message_placeholder = st.empty()
         full_response = ""
         
-        try:
-            with st.spinner("宇宙と通信中だよ、ちょっと"):
+        with st.spinner("宇宙と通信中だよ、ちょっとまってね "):
+            try:
                 search_query = generate_search_query(prompt, st.session_state.messages)
-            
-            with st.spinner(f"🛰️ オーダー「{search_query}」に最適な情報を探索中…"):
+                
                 docs_with_scores = db.similarity_search_with_score(search_query, k=10) # 検索件数を増やす
-            
-            context = "--- 関連情報 ---\n"
-            source_docs = []
-            if docs_with_scores:
-                for doc, score in docs_with_scores:
-                    # スコアが著しく低いものは除外（調整可能）
-                    if score < 0.8:
-                        context += doc.page_content + "\n\n"
-                        source_docs.append({
-                            "file_path": doc.metadata.get('source', 'N/A'),
-                            "score": score
-                        })
+                
+                context = "--- 関連情報 ---\n"
+                source_docs = []
+                if docs_with_scores:
+                    for doc, score in docs_with_scores:
+                        # スコアが著しく低いものは除外（調整可能）
+                        if score < 0.8:
+                            context += doc.page_content + "\n\n"
+                            source_docs.append({
+                                "file_path": doc.metadata.get('source', 'N/A'),
+                                "score": score,
+                                "content": doc.page_content # 参照箇所を保存
+                            })
 
-            system_prompt_content = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
+                system_prompt_content = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
 
 # あなたの唯一の役割
 あなたの役割は、ユーザーの悩みを直接的に解決することではありません。
@@ -170,21 +173,21 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
 - しゅんさんとして、親しみやすく、分かりやすい言葉で応答してください。
 - 絶対に、関連情報セクションの外にある知識（あなた自身の一般的な知識など）を使って回答を生成してはいけません。
 """
-            
-            final_prompt = f"{system_prompt_content}\n\n{context}\n\nuser: {prompt}\nassistant:"
-            
-            stream = model.generate_content(final_prompt, stream=True)
-            for chunk in stream:
-                if chunk.text:
-                    full_response += chunk.text
-                    message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
+                
+                final_prompt = f"{system_prompt_content}\n\n{context}\n\nuser: {prompt}\nassistant:"
+                
+                stream = model.generate_content(final_prompt, stream=True)
+                for chunk in stream:
+                    if chunk.text:
+                        full_response += chunk.text
+                        message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
 
 
-        except Exception as e:
-            st.error(f"エラーが発生しました: {traceback.format_exc()}")
-            full_response = "申し訳ありません、応答を生成できませんでした。"
-            message_placeholder.markdown(full_response)
+            except Exception as e:
+                st.error(f"エラーが発生しました: {traceback.format_exc()}")
+                full_response = "申し訳ありません、応答を生成できませんでした。"
+                message_placeholder.markdown(full_response)
 
         assistant_message = {
             "role": "assistant",
