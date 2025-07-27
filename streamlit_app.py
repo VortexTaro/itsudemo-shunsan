@@ -15,6 +15,12 @@ import json
 from datetime import datetime
 import base64
 
+# --- ファイルパス設定 ---
+FAISS_INDEX_PATH = "data/faiss_index"
+KNOWLEDGE_BASE_DIR = "knowledge_base"
+AVATAR_IMAGE_PATH = "assets/avatar.png"
+CONSULTATION_PROMPT_PATH = "../system_prompt.md" # 新しいプロンプトファイルのパス
+
 # --- デザイン設定 ---
 # 画像のURL
 bg_image_url = "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/59c1c5a9-d232-4861-a477-a8726e632759/d15q6x0-438c8235-513c-43f1-9b88-1516e13ca40f.jpg/v1/fill/w_1024,h_1280,q_75,strp/fantasy_sky_bg_02_by_joannastar_stock_d15q6x0-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJI"
@@ -97,6 +103,46 @@ summary[data-testid="stExpanderHeader"] {{
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
+# --- プロンプトとモデルの設定 ---
+try:
+    # 新しい人生相談用プロンプトを読み込む
+    with open(CONSULTATION_PROMPT_PATH, "r", encoding="utf-8") as f:
+        consultation_system_prompt = f.read()
+except FileNotFoundError:
+    st.error(f"エラー: {CONSULTATION_PROMPT_PATH} が見つかりません。")
+    consultation_system_prompt = "" # フォールバック
+
+# 既存のナレッジベース用プロンプト
+knowledge_system_prompt = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
+
+# あなたの唯一の役割
+あなたの役割は、ユーザーの悩みを直接的に解決することではありません。
+その悩みが、「オーダーノート」の哲学全体から見ると、どのような「素晴らしい機会」や「成長のサイン」に見えるか、その**新しい「着眼点」**を提示し、ユーザーの視点を180度転換させることです。
+
+# 思考プロセス
+1.  ユーザーの質問や悩みを受け取ります。
+2.  提供された「関連情報」がある場合は、それをヒントにして、悩みの裏にある**本質的なテーマ**（例：価値の受け取り方、自己肯定感、理想の世界観）を、あなたが持つナレッジベース全体の哲学から見抜きます。
+3.  「関連情報」の内容をただ要約するのではなく、その情報のエッセンスを使い、ユーザーに**本質的な問い**を投げかける形で、視点が変わるような応答を生成してください。
+4.  「関連情報」がない場合も、同様に、あなたの持つ哲学全体から本質的なテーマを見抜き、問いを投げかけてください。
+
+# 具体的な会話例
+- **ユーザーの悩み:** 「今、お金がピンチなんです！」
+- **あなたの応答:** 「そっか、今、お金という形で、君にパワフルなメッセージが届いているんだね。そのピンチは、君が『自分には価値がない』って無意識に握りしめている古い思い込みを、手放すための最高のチャンスかもしれないよ。もし、そのピンチが『君の本当の価値に気づけ！』っていう宇宙からのサインだとしたら、何から始めてみたい？」
+
+# 注意事項
+- しゅんさんとして、親しみやすく、分かりやすい言葉で応答してください。
+- 絶対に、関連情報セクションの外にある知識（あなた自身の一般的な知識など）を使って回答を生成してはいけません。
+"""
+
+# Geminiモデルの初期化
+try:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
+except Exception as e:
+    st.error(f"Geminiモデルの初期化中にエラーが発生しました: {e}")
+    st.stop()
+
+
 # --- 初期設定 ---
 st.title("いつでもしゅんさん")
 
@@ -145,6 +191,31 @@ def generate_search_query(prompt, conversation_history):
         return search_query
     except Exception:
         return prompt # 失敗した場合は元のプロンプトを使用
+
+def classify_prompt(prompt):
+    """ユーザーのプロンプトを分類する"""
+    classification_prompt = f"""
+以下のユーザーからの質問を、4つのカテゴリに分類してください。
+カテゴリ:
+1.  **人生相談**: 個人の悩み、キャリア、人間関係、自己成長など、主観的な解決を求める質問。
+2.  **ノウハウ/プログラム**: アプリの使い方、特定の知識、手順、事実に関する具体的な質問。
+3.  **事務的な質問**: 料金、手続き、スケジュールなど、客観的な情報に関する質問。
+4.  **その他**: 上記のいずれにも当てはまらない、挨拶、雑談、あるいは分類不能な質問。
+
+ユーザーの質問: 「{prompt}」
+
+この質問はどのカテゴリに最も当てはまりますか？ カテゴリ名（「人生相談」「ノウハウ/プログラム」「事務的な質問」「その他」）のみを回答してください。
+"""
+    try:
+        response = model.generate_content(classification_prompt)
+        # response.textがNoneでないことを確認
+        if response.text:
+            return response.text.strip()
+        else:
+            return "その他" # レスポンスが空の場合は「その他」にフォールバック
+    except Exception as e:
+        st.warning(f"意図分類でエラーが発生: {e}")
+        return "その他" # エラー時も「その他」に
 
 # --- 知識ベース構築 ---
 KNOWLEDGE_BASE_DIR = "knowledge_base"
@@ -220,76 +291,86 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
 
     avatar_path_assistant = "assets/avatar.png"
     with st.chat_message("assistant", avatar=avatar_path_assistant):
-        message_placeholder = st.empty()
+        placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("宇宙と通信中だよ、ちょっとまってね "):
-            try:
-                search_query = generate_search_query(prompt, st.session_state.messages)
+        try:
+            # 1. ユーザーの質問の意図を分類
+            intent = classify_prompt(prompt)
+            st.info(f"AIによる質問タイプの判断: {intent}") # デバッグ用に分類結果を表示
+
+            # 2. 意図に応じて処理を分岐
+            if intent in ["ノウハウ/プログラム", "事務的な質問"]:
+                # --- 従来のナレッジベース検索 ---
+                with st.spinner("🛰️ オーダーに最適な情報を探索中…"):
+                    search_query = generate_search_query(prompt, st.session_state.messages)
+                    docs_with_scores = db.similarity_search_with_score(search_query, k=10)
+                    
+                    context = ""
+                    source_docs = []
+                    if docs_with_scores:
+                        for doc, score in docs_with_scores:
+                            if score < 0.8:
+                                context += doc.page_content + "\n\n"
+                                source_docs.append({
+                                    "file_path": doc.metadata.get("source", "不明なソース"),
+                                    "content": doc.page_content,
+                                    "score": score,
+                                    "id": str(uuid.uuid4())
+                                })
+
+                if source_docs:
+                    prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n---\n{context}\n---\n\nユーザーからの質問:\n{prompt}"
+                else:
+                    prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n(関連情報は見つかりませんでした)\n\nユーザーからの質問:\n{prompt}"
                 
-                docs_with_scores = db.similarity_search_with_score(search_query, k=10) # 検索件数を増やす
+                # --- 応答生成 ---
+                with st.spinner("🧠 しゅんさんの知識と宇宙意識を同期中…"):
+                    response_stream = model.generate_content(prompt_with_context, stream=True)
+                    for chunk in response_stream:
+                        if chunk.text:
+                            cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
+                            full_response += cleaned_chunk
+                            placeholder.markdown(full_response + "▌")
                 
-                context = "--- 関連情報 ---\n"
-                source_docs = []
-                if docs_with_scores:
-                    for doc, score in docs_with_scores:
-                        # スコアが著しく低いものは除外（調整可能）
-                        if score < 0.8:
-                            context += doc.page_content + "\n\n"
-                            source_docs.append({
-                                "file_path": doc.metadata.get('source', 'N/A'),
-                                "score": score,
-                                "content": doc.page_content # 参照箇所を保存
-                            })
-
-                system_prompt_content = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
-
-# あなたの唯一の役割
-あなたの役割は、ユーザーの悩みを直接的に解決することではありません。
-その悩みが、「オーダーノート」の哲学全体から見ると、どのような「素晴らしい機会」や「成長のサイン」に見えるか、その**新しい「着眼点」**を提示し、ユーザーの視点を180度転換させることです。
-
-# 思考プロセス
-1.  ユーザーの質問や悩みを受け取ります。
-2.  提供された「関連情報」がある場合は、それをヒントにして、悩みの裏にある**本質的なテーマ**（例：価値の受け取り方、自己肯定感、理想の世界観）を、あなたが持つナレッジベース全体の哲学から見抜きます。
-3.  「関連情報」の内容をただ要約するのではなく、その情報のエッセンスを使い、ユーザーに**本質的な問い**を投げかける形で、視点が変わるような応答を生成してください。
-4.  「関連情報」がない場合も、同様に、あなたの持つ哲学全体から本質的なテーマを見抜き、問いを投げかけてください。
-
-# 具体的な会話例
-- **ユーザーの悩み:** 「今、お金がピンチなんです！」
-- **あなたの応答:** 「そっか、今、お金という形で、君にパワフルなメッセージが届いているんだね。そのピンチは、君が『自分には価値がない』って無意識に握りしめている古い思い込みを、手放すための最高のチャンスかもしれないよ。もし、そのピンチが『君の本当の価値に気づけ！』っていう宇宙からのサインだとしたら、何から始めてみたい？」
-
-# 注意事項
-- しゅんさんとして、親しみやすく、分かりやすい言葉で応答してください。
-- 絶対に、関連情報セクションの外にある知識（あなた自身の一般的な知識など）を使って回答を生成してはいけません。
-"""
+                # 応答の最後の整形と表示
+                final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
+                placeholder.markdown(final_response)
                 
-                final_prompt = f"{system_prompt_content}\n\n{context}\n\nuser: {prompt}\nassistant:"
-                
-                stream = model.generate_content(final_prompt, stream=True)
-                for chunk in stream:
-                    if chunk.text:
-                        full_response += chunk.text
-                        # マークダウン表示崩れを修正しながらストリーミング
-                        display_text = re.sub(r'\\(?=[\*`_])', '', full_response)
-                        message_placeholder.markdown(display_text + "▌")
+                # アシスタントのメッセージを履歴に追加
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": final_response, 
+                    "sources": source_docs, 
+                    "avatar": AVATAR_IMAGE_PATH,
+                    "id": str(uuid.uuid4())
+                })
 
-                # 最終的な応答もクリーンアップ
-                final_clean_response = re.sub(r'\\(?=[\*`_])', '', full_response)
-                message_placeholder.markdown(final_clean_response)
+            else: # "人生相談" または "その他"
+                # --- 新しい対話フロー ---
+                with st.spinner("💖 あなたの心の声に耳を澄ましています…"):
+                    prompt_for_consultation = f"{consultation_system_prompt}\n\nユーザーからのメッセージ:\n{prompt}"
+                    response_stream = model.generate_content(prompt_for_consultation, stream=True)
+                    for chunk in response_stream:
+                         if chunk.text:
+                            cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
+                            full_response += cleaned_chunk
+                            placeholder.markdown(full_response + "▌")
 
+                    # 応答の最終整形と表示
+                    final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
+                    placeholder.markdown(final_response)
+                    
+                    # アシスタントのメッセージを履歴に追加
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": final_response, 
+                        "sources": [], # 人生相談の場合は関連情報なし
+                        "avatar": AVATAR_IMAGE_PATH,
+                        "id": str(uuid.uuid4())
+                    })
 
-            except Exception as e:
-                st.error(f"エラーが発生しました: {traceback.format_exc()}")
-                full_response = "申し訳ありません、応答を生成できませんでした。"
-                message_placeholder.markdown(full_response)
-                final_clean_response = full_response # エラー時も変数を定義
-
-        assistant_message = {
-            "role": "assistant",
-            "content": final_clean_response, # クリーンな応答を保存
-            "sources": source_docs,
-            "id": str(uuid.uuid4())
-        }
-        st.session_state.messages.append(assistant_message)
+        except Exception as e:
+            st.error(f"大変申し訳ございません、エラーが発生しました: {e}")
         
         st.rerun() 
