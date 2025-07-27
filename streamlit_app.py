@@ -124,15 +124,12 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
                     })
 
             # プロンプトファイルの作成と読み込み
-            prompt_file_path = "docs/system_prompt.md"
             system_prompt_content = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
 しゅんさんとして、親しみやすく、分かりやすい言葉で、ユーザーの悩みや質問に答えてください。
 提供された「関連情報」を最優先の知識ベースとし、その情報のみに基づいて回答を生成してください。
 情報が不足している場合は、正直に「その質問については、僕の知識の中には情報がないみたい。ごめんね！」と答えてください。
 絶対に、関連情報以外の知識（あなた自身の一般的な知識など）を使って回答を生成してはいけません。
 """
-            with open(prompt_file_path, "w", encoding="utf-8") as f:
-                f.write(system_prompt_content)
             
             final_prompt = f"{system_prompt_content}\n\n{context}\n\nuser: {prompt}\nassistant:"
             
