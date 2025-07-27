@@ -69,7 +69,7 @@ def load_faiss_index(path, _embeddings, knowledge_dir):
         except Exception as e:
             st.warning(f"既存DBの読み込みに失敗: {e}。再構築します。")
     
-    st.info("知識ベースを構築しています...")
+    # st.info("知識ベースを構築しています...")
     search_path = os.path.join(knowledge_dir, "**/*.txt")
     all_file_paths = glob.glob(search_path, recursive=True)
 
@@ -77,8 +77,8 @@ def load_faiss_index(path, _embeddings, knowledge_dir):
         st.error(f"ナレッジベースのディレクトリ '{knowledge_dir}' にドキュメントが見つかりません。")
         st.stop()
 
-    with st.expander(f"読み込み対象ファイル: {len(all_file_paths)}件"):
-        st.code('\n'.join(sorted(all_file_paths)))
+    # with st.expander(f"読み込み対象ファイル: {len(all_file_paths)}件"):
+    #     st.code('\n'.join(sorted(all_file_paths)))
 
     documents = []
     for file_path in all_file_paths:
@@ -94,7 +94,7 @@ def load_faiss_index(path, _embeddings, knowledge_dir):
     db = FAISS.from_documents(chunks, _embeddings)
     os.makedirs(path, exist_ok=True)
     db.save_local(path)
-    st.success(f"新しい知識ベースを '{path}' に保存しました。")
+    # st.success(f"新しい知識ベースを '{path}' に保存しました。")
     return db
 
 db = load_faiss_index(FAISS_INDEX_PATH, embeddings, KNOWLEDGE_BASE_DIR)
