@@ -250,7 +250,7 @@ for msg in st.session_state.messages:
                 for source in msg["sources"]:
                     # st.info(f"`{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
                     st.markdown(f"**ファイル名:** `{os.path.relpath(source['file_path'])}` (スコア: {source['score']:.4f})")
-                    st.text_area("参照箇所", value=source['content'], height=150, disabled=True, key=f"source_{msg['id']}_{source['file_path']}")
+                    st.text_area("参照箇所", value=source['content'], height=150, disabled=True, key=f"source_{source['id']}")
                     st.divider()
 
 
@@ -269,8 +269,7 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
         sources = []
 
         try:
-            # --- シンプルな応答生成フロー ---
-            with st.spinner("🛰️ オーダーに最適な情報を探索中…"):
+            with st.spinner("宇宙と通信中だよ、ちょっとまってね "):
                 search_query = generate_search_query(prompt, st.session_state.messages)
                 docs_with_scores = db.similarity_search_with_score(search_query, k=10)
                 
