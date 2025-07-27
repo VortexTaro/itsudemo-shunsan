@@ -19,7 +19,6 @@ import base64
 FAISS_INDEX_PATH = "data/faiss_index"
 KNOWLEDGE_BASE_DIR = "knowledge_base"
 AVATAR_IMAGE_PATH = "assets/avatar.png"
-CONSULTATION_PROMPT_PATH = "../system_prompt.md" # 新しいプロンプトファイルのパス
 
 # --- デザイン設定 ---
 # 画像のURL
@@ -41,61 +40,68 @@ custom_css = f"""
 h1 {{
     font-family: 'Noto Sans JP', sans-serif;
     color: #FFFFFF;
-    text-shadow: 2px 2px 10px #000000, 0 0 5px #000000;
-}}
-
-/* General text & Chat Bubbles */
-body, .st-emotion-cache-10trblm, div[data-testid="stChatMessage"] > div > div > p {{
-    color: #F0F0F0; /* Slightly off-white for better readability */
-    font-family: 'Noto Sans JP', sans-serif;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    text-shadow: 2px 2px 8px #000000;
 }}
 
 /* Chat Bubbles Container */
 div[data-testid="stChatMessage"] {{
     border-radius: 12px;
     padding: 1rem 1.2rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(15, 15, 15, 0.95); /* Very dark, almost opaque */
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(240, 240, 245, 0.9); /* Light, semi-transparent background */
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }}
+
+/* Chat Bubble Text */
+div[data-testid="stChatMessage"] > div > div > p {{
+    color: #1E1E1E; /* Dark text for high contrast */
+    font-family: 'Noto Sans JP', sans-serif;
+    text-shadow: none; /* No shadow needed for dark text on light bg */
+}}
+
 
 /* Chat Input Box */
 div[data-testid="stChatInput"] {{
-    background-color: transparent;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(15, 15, 15, 0.8); /* Dark input area for contrast */
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }}
 
 textarea[data-testid="stChatInputTextArea"] {{
-    background-color: rgba(15, 15, 15, 0.95);
-    color: #F0F0F0;
+    background-color: rgba(230, 230, 235, 1); /* Opaque light input */
+    color: #1E1E1E; /* Dark text */
     font-family: 'Noto Sans JP', sans-serif;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.2);
 }}
 
 textarea[data-testid="stChatInputTextArea"]:focus {{
-    border-color: rgba(0, 255, 255, 0.7);
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    border-color: #0078FF;
+    box-shadow: 0 0 8px #0078FF;
 }}
 
 /* Expander for source files */
 div[data-testid="stExpander"] {{
-    border-color: rgba(255, 255, 255, 0.1);
-    background-color: rgba(15, 15, 15, 0.9);
+    border-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(220, 220, 225, 0.95); /* Light background */
     border-radius: 12px;
 }}
 
-summary[data-testid="stExpanderHeader"] {{
-    color: #F0F0F0;
-    font-family: 'Noto Sans JP', sans-serif;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+summary[data-testid="stExpanderHeader"] > div p {{
+    color: #1E1E1E; /* Dark text */
+    text-shadow: none;
 }}
+div[data-testid="stExpander"] div[data-testid="stMarkdownContainer"] p {{
+    color: #1E1E1E; /* Dark text for source file names */
+}}
+div[data-testid="stExpander"] textarea {{
+    color: #1E1E1E; /* Dark text for source content */
+    background-color: rgba(255, 255, 255, 0.7);
+}}
+
 
 /* Spinner text color */
 .stSpinner > div > div {{
-    color: #F0F0F0;
+    color: #FFFFFF;
     text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
 }}
 </style>
@@ -104,14 +110,6 @@ st.markdown(custom_css, unsafe_allow_html=True)
 
 
 # --- プロンプトとモデルの設定 ---
-try:
-    # 新しい人生相談用プロンプトを読み込む
-    with open(CONSULTATION_PROMPT_PATH, "r", encoding="utf-8") as f:
-        consultation_system_prompt = f.read()
-except FileNotFoundError:
-    st.error(f"エラー: {CONSULTATION_PROMPT_PATH} が見つかりません。")
-    consultation_system_prompt = "" # フォールバック
-
 # 既存のナレッジベース用プロンプト
 knowledge_system_prompt = """あなたは「しゅんさん」の思考や知識、経験を完全にコピーしたAIクローンです。
 
@@ -192,31 +190,6 @@ def generate_search_query(prompt, conversation_history):
     except Exception:
         return prompt # 失敗した場合は元のプロンプトを使用
 
-def classify_prompt(prompt):
-    """ユーザーのプロンプトを分類する"""
-    classification_prompt = f"""
-以下のユーザーからの質問を、4つのカテゴリに分類してください。
-カテゴリ:
-1.  **人生相談**: 個人の悩み、キャリア、人間関係、自己成長など、主観的な解決を求める質問。
-2.  **ノウハウ/プログラム**: アプリの使い方、特定の知識、手順、事実に関する具体的な質問。
-3.  **事務的な質問**: 料金、手続き、スケジュールなど、客観的な情報に関する質問。
-4.  **その他**: 上記のいずれにも当てはまらない、挨拶、雑談、あるいは分類不能な質問。
-
-ユーザーの質問: 「{prompt}」
-
-この質問はどのカテゴリに最も当てはまりますか？ カテゴリ名（「人生相談」「ノウハウ/プログラム」「事務的な質問」「その他」）のみを回答してください。
-"""
-    try:
-        response = model.generate_content(classification_prompt)
-        # response.textがNoneでないことを確認
-        if response.text:
-            return response.text.strip()
-        else:
-            return "その他" # レスポンスが空の場合は「その他」にフォールバック
-    except Exception as e:
-        st.warning(f"意図分類でエラーが発生: {e}")
-        return "その他" # エラー時も「その他」に
-
 # --- 知識ベース構築 ---
 KNOWLEDGE_BASE_DIR = "knowledge_base"
 FAISS_INDEX_PATH = "data/faiss_index"
@@ -296,51 +269,34 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
         sources = []
 
         try:
-            # 1. ユーザーの質問の意図を分類
-            intent = classify_prompt(prompt)
-            st.info(f"AIによる質問タイプの判断: {intent}") # デバッグ用に分類結果を表示
-
-            # 2. 意図に応じて処理を分岐
-            if intent in ["ノウハウ/プログラム", "事務的な質問"]:
-                # --- 従来のナレッジベース検索フロー ---
-                with st.spinner("🛰️ オーダーに最適な情報を探索中…"):
-                    search_query = generate_search_query(prompt, st.session_state.messages)
-                    docs_with_scores = db.similarity_search_with_score(search_query, k=10)
-                    
-                    context = ""
-                    for doc, score in docs_with_scores:
-                        if score < 0.8:
-                            context += doc.page_content + "\n\n"
-                            sources.append({
-                                "file_path": doc.metadata.get("source", "不明なソース"),
-                                "content": doc.page_content,
-                                "score": score,
-                                "id": str(uuid.uuid4())
-                            })
-
-                if sources:
-                    prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n---\n{context}\n---\n\nユーザーからの質問:\n{prompt}"
-                else:
-                    prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n(関連情報は見つかりませんでした)\n\nユーザーからの質問:\n{prompt}"
+            # --- シンプルな応答生成フロー ---
+            with st.spinner("🛰️ オーダーに最適な情報を探索中…"):
+                search_query = generate_search_query(prompt, st.session_state.messages)
+                docs_with_scores = db.similarity_search_with_score(search_query, k=10)
                 
-                with st.spinner("🧠 しゅんさんの知識と宇宙意識を同期中…"):
-                    response_stream = model.generate_content(prompt_with_context, stream=True)
-                    for chunk in response_stream:
-                        if chunk.text:
-                            cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
-                            full_response += cleaned_chunk
-                            placeholder.markdown(full_response + "▌")
+                context = ""
+                for doc, score in docs_with_scores:
+                    if score < 0.8: # 閾値は維持
+                        context += doc.page_content + "\n\n"
+                        sources.append({
+                            "file_path": doc.metadata.get("source", "不明なソース"),
+                            "content": doc.page_content,
+                            "score": score,
+                            "id": str(uuid.uuid4())
+                        })
+
+            if sources:
+                prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n---\n{context}\n---\n\nユーザーからの質問:\n{prompt}"
+            else:
+                prompt_with_context = f"{knowledge_system_prompt}\n\n関連情報:\n(関連情報は見つかりませんでした)\n\nユーザーからの質問:\n{prompt}"
             
-            else: # "人生相談" または "その他"
-                # --- 新しい対話フロー ---
-                with st.spinner("💖 あなたの心の声に耳を澄ましています…"):
-                    prompt_for_consultation = f"{consultation_system_prompt}\n\nユーザーからのメッセージ:\n{prompt}"
-                    response_stream = model.generate_content(prompt_for_consultation, stream=True)
-                    for chunk in response_stream:
-                        if chunk.text:
-                            cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
-                            full_response += cleaned_chunk
-                            placeholder.markdown(full_response + "▌")
+            with st.spinner("🧠 しゅんさんの知識と宇宙意識を同期中…"):
+                response_stream = model.generate_content(prompt_with_context, stream=True)
+                for chunk in response_stream:
+                    if chunk.text:
+                        cleaned_chunk = re.sub(r'\\(?=[\*`_])', '', chunk.text)
+                        full_response += cleaned_chunk
+                        placeholder.markdown(full_response + "▌")
 
             # 応答の最後の整形と表示
             final_response = re.sub(r'\\(?=[\*`_])', '', full_response)
@@ -350,7 +306,7 @@ if prompt := st.chat_input("質問や相談したいことを入力してね"):
             st.session_state.messages.append({
                 "role": "assistant", 
                 "content": final_response, 
-                "sources": sources, # ノウハウ検索の場合はsourcesが入り、それ以外は空のリストが入る
+                "sources": sources,
                 "avatar": AVATAR_IMAGE_PATH,
                 "id": str(uuid.uuid4())
             })
